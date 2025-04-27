@@ -4,10 +4,8 @@ import matplotlib.pyplot as plt
 import cv2
 from tensorflow.keras.applications import VGG19
 
-# 🔹 Ensure TensorFlow uses float32 instead of mixed precision
 tf.keras.mixed_precision.set_global_policy('float32')
 
-# Load and preprocess image
 def load_and_process_image(image_path, img_size=512):
     img = cv2.imread(image_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -15,7 +13,6 @@ def load_and_process_image(image_path, img_size=512):
     img = np.expand_dims(img, axis=0).astype('float32')  # Ensure float32 dtype
     return tf.keras.applications.vgg19.preprocess_input(img)
 
-# Deprocess image for display
 def deprocess_image(img):
     img = img.reshape((img.shape[1], img.shape[2], 3))
     img[:, :, 0] += 103.939
@@ -24,36 +21,30 @@ def deprocess_image(img):
     img = np.clip(img, 0, 255).astype('uint8')
     return img
 
-# Load pre-trained VGG19 model
 def get_vgg19_model():
     model = VGG19(weights='imagenet', include_top=False)
     model.trainable = False
     return model
 
-# Compute content loss
 def compute_content_loss(base_content, target):
     return tf.reduce_mean(tf.square(base_content - target))
 
-# Compute Gram matrix for style representation
 def gram_matrix(tensor):
-    tensor = tf.cast(tensor, tf.float32)  # ✅ Convert tensor to float32 to avoid dtype mismatch
+    tensor = tf.cast(tensor, tf.float32)  
     channels = int(tensor.shape[-1])
     a = tf.reshape(tensor, [-1, channels])
     n = tf.shape(a)[0]
     gram = tf.matmul(a, a, transpose_a=True) / tf.cast(n, tf.float32)
     return gram
 
-# Compute style loss
 def compute_style_loss(base_style, target_style):
     return tf.reduce_mean(tf.square(gram_matrix(base_style) - gram_matrix(target_style)))
 
-# Compute total variation loss for smoothing
 def total_variation_loss(img):
     x_deltas = img[:, :-1, :-1, :] - img[:, 1:, :-1, :]
     y_deltas = img[:, :-1, :-1, :] - img[:, :-1, 1:, :]
     return tf.reduce_sum(tf.abs(x_deltas)) + tf.reduce_sum(tf.abs(y_deltas))
 
-# Extract features from layers
 def get_features(image, model):
     layers = ['block4_conv2']  # Content layer
     style_layers = ['block1_conv1', 'block2_conv1', 'block3_conv1', 'block4_conv1', 'block5_conv1']
@@ -62,9 +53,7 @@ def get_features(image, model):
     features = feature_model(image)
     return features[:1], features[1:]
 
-# 🔥 Optimized Style Transfer Function
 def style_transfer(content_path, style_path, iterations=500, alpha=1e4, beta=1e-2):  
-    # ✅ Reduced iterations to 500 for faster execution  
     print("🔄 Loading images...")  
     content_image = load_and_process_image(content_path)
     style_image = load_and_process_image(style_path)
@@ -91,14 +80,12 @@ def style_transfer(content_path, style_path, iterations=500, alpha=1e4, beta=1e-
         optimizer.apply_gradients([(grads, generated_image)])
         generated_image.assign(tf.clip_by_value(generated_image, -103.939, 255 - 103.939))
 
-        # ✅ Print progress every 50 iterations
         if i % 50 == 0:
             print(f"Iteration {i}: Loss {total_loss.numpy()}")
 
-    print("✅ Style transfer complete!")
+    print("Style transfer complete!")
     return deprocess_image(generated_image.numpy())
 
-# Run the style transfer
 content_image_path = "D:\\INTERNSHIP CODTECH\\TASK 3\\content_image.jpg"
 style_image_path = "D:\\INTERNSHIP CODTECH\\TASK 3\\style_image.jpg"
 
